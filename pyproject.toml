@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minion-rush-relived"
+version = "0.1.0"
+description = "MRR — A community-driven server project for Minion Rush."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+mrr = "mrr.__main__:main"
+
+[tool.setuptools]
+package-dir = { "" = "server/python" }
+
+[tool.setuptools.packages.find]
+where = ["server/python"]
+include = ["mrr*"]
+
+[tool.pytest.ini_options]
+testpaths = ["server/python/tests"]
+pythonpath = ["server/python"]
+addopts = "-q"
