@@ -1,0 +1,23 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mrr-server
+  datasource:
+    url: "jdbc:sqlite:${mrr.data-dir}/mrr.db"
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+
+mrr:
+  data-dir: ./data
+  session-ttl-seconds: 86400
+  password-iterations: 600000

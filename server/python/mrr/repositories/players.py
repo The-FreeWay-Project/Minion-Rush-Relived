@@ -16,7 +16,7 @@ from mrr.db import open_connection
 
 __all__ = ["Player", "PlayerRepository"]
 
-_TABLE_COLUMNS = "id, player_id, display_name, level, coins, created_at"
+_TABLE_COLUMNS = "id, player_id, display_name, level, coins, created_at, account_id"
 
 
 @dataclass(frozen=True)
@@ -29,6 +29,7 @@ class Player:
     level: int
     coins: int
     created_at: str
+    account_id: int | None = None  # owning account, None for unowned test players
 
 
 def _to_player(row: tuple) -> Player:
@@ -39,6 +40,7 @@ def _to_player(row: tuple) -> Player:
         level=row[3],
         coins=row[4],
         created_at=row[5],
+        account_id=row[6],
     )
 
 
@@ -66,6 +68,7 @@ class PlayerRepository:
         display_name: str,
         level: int = 1,
         coins: int = 0,
+        account_id: int | None = None,
         created_at: str | None = None,
     ) -> Player:
         """Insert one player and return the stored row.
@@ -76,9 +79,9 @@ class PlayerRepository:
             created_at = _utc_now()
         with open_connection(self.database_path) as conn:
             cursor = conn.execute(
-                "INSERT INTO players (player_id, display_name, level, coins, created_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (player_id, display_name, level, coins, created_at),
+                "INSERT INTO players (player_id, display_name, level, coins, created_at, account_id) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (player_id, display_name, level, coins, created_at, account_id),
             )
             row = conn.execute(
                 f"SELECT {_TABLE_COLUMNS} FROM players WHERE id = ?",
@@ -112,6 +115,20 @@ class PlayerRepository:
                 (player_id,),
             )
         return cursor.rowcount > 0
+
+    def get_players_by_account_id(self, account_id: int) -> list[Player]:
+        """Return all players owned by an account, ordered by internal id."""
+        with open_connection(self.database_path) as conn:
+            rows = conn.execute(
+                f"SELECT {_TABLE_COLUMNS} FROM players WHERE account_id = ? ORDER BY id",
+                (account_id,),
+            ).fetchall()
+        return [_to_player(row) for row in rows]
+
+    def get_primary_player_for_account(self, account_id: int) -> Player | None:
+        """Return the first player owned by an account, or None."""
+        players = self.get_players_by_account_id(account_id)
+        return players[0] if players else None
 
     def list_players(self, limit: int = 100, offset: int = 0) -> list[Player]:
         """Return players ordered by internal id."""

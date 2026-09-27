@@ -222,3 +222,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Gradle / Java server
+.gradle/
+server/java/data/
+# locally built SQLite-JDBC native library (OmniOS), see docs/omnios.md
+server/java/native/
+server/java/tools/omnios/.build/
+
+# Android
+local.properties
+*.iml
+.idea/
+captures/
+.kotlin/

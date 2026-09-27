@@ -1,0 +1,110 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.1'
+}
+
+group = 'de.freeway'
+version = '0.3.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation platform('org.springframework.boot:spring-boot-dependencies:4.1.1')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.hibernate.orm:hibernate-community-dialects'
+    implementation 'org.xerial:sqlite-jdbc:3.53.4.0'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-webmvc-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add('-parameters')
+    options.compilerArgs.add('-Xlint:deprecation')
+    options.encoding = 'UTF-8'
+}
+
+// ---------------------------------------------------------------------------
+// SQLite-JDBC native library (SunOS / OmniOS)
+//
+// org.xerial:sqlite-jdbc ships prebuilt natives only for Linux, FreeBSD,
+// Windows and macOS (org/sqlite/native/<OS>/<ARCH>/ in the jar). On SunOS
+// (OmniOS CE, i86pc/x86_64) that resource is missing, so the driver fails in
+// org.sqlite.core.NativeDB with UnsatisfiedLinkError:
+//   "No native library found for os.name=sunos, os.arch=..., paths=[...]"
+//
+// SQLiteJDBCLoader.loadSQLiteNativeLibrary() checks FIRST for the system
+// properties org.sqlite.lib.path / org.sqlite.lib.name and System.load()s
+// that file. We therefore load a locally built library there — no jar
+// repackaging, no code changes. The library is built from pinned upstream
+// sources (xerial/sqlite-jdbc @ 3.53.4.0 + official SQLite amalgamation) with
+// tools/omnios/build-sqlitejdbc.sh; see docs/omnios.md.
+//
+// Lookup order for the library file:
+//   1. env MRR_SQLITE_JDBC_LIB            (absolute path to libsqlitejdbc.so)
+//   2. -Dorg.sqlite.lib.path[.name] on the gradle command line (forwarded)
+//   3. <project>/native/sunos/x86_64/libsqlitejdbc.so (build script output)
+// ---------------------------------------------------------------------------
+def isSunOs = System.getProperty('os.name', '').equalsIgnoreCase('SunOS')
+
+def resolveSqliteJdbcLib = {
+    def env = System.getenv('MRR_SQLITE_JDBC_LIB')
+    if (env != null && !env.trim().isEmpty()) {
+        return file(env.trim())
+    }
+    return layout.projectDirectory.file('native/sunos/x86_64/libsqlitejdbc.so').asFile
+}
+
+def sqliteJdbcForkArgs = {
+    def propPath = System.getProperty('org.sqlite.lib.path')
+    if (propPath != null && !propPath.trim().isEmpty()) {
+        def args = ["-Dorg.sqlite.lib.path=${propPath}".toString()]
+        def propName = System.getProperty('org.sqlite.lib.name')
+        if (propName != null && !propName.trim().isEmpty()) {
+            args.add("-Dorg.sqlite.lib.name=${propName}".toString())
+        }
+        return args
+    }
+    def lib = resolveSqliteJdbcLib()
+    if (lib.isFile()) {
+        return [
+            "-Dorg.sqlite.lib.path=${lib.parentFile.absolutePath}".toString(),
+            "-Dorg.sqlite.lib.name=${lib.name}".toString(),
+        ]
+    }
+    return []
+}
+
+def sqliteJdbcMissingHint = 'SQLite-JDBC native library for SunOS is missing.\n' +
+    'Build it once from pinned sources:\n' +
+    '    server/java/tools/omnios/build-sqlitejdbc.sh\n' +
+    '(see docs/omnios.md), or point the environment variable\n' +
+    'MRR_SQLITE_JDBC_LIB at an existing libsqlitejdbc.so.'
+
+def configureSqliteJdbcNative = { org.gradle.api.Task task ->
+    def args = sqliteJdbcForkArgs()
+    if (!args.isEmpty()) {
+        task.jvmArgs(args)
+    } else if (isSunOs) {
+        task.doFirst {
+            throw new org.gradle.api.GradleException(sqliteJdbcMissingHint)
+        }
+    }
+}
+
+tasks.withType(Test).configureEach { configureSqliteJdbcNative(it) }
+tasks.matching { it.name == 'bootRun' }.configureEach { configureSqliteJdbcNative(it) }
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

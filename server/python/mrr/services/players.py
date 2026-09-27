@@ -81,6 +81,14 @@ class PlayerService:
             raise PlayerValidationError("player_id must be a non-empty string")
         return self._repository.delete_player(player_id)
 
+    def get_players_for_account(self, account_id: int) -> list[Player]:
+        """All players owned by an account (empty list when none)."""
+        return self._repository.get_players_by_account_id(account_id)
+
+    def get_primary_player_for_account(self, account_id: int) -> Player | None:
+        """The account's first player, or None (used by the profile)."""
+        return self._repository.get_primary_player_for_account(account_id)
+
     def list_players(self, limit: int = 100, offset: int = 0) -> list[Player]:
         return self._repository.list_players(limit=limit, offset=offset)
 
