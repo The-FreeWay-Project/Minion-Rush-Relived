@@ -76,6 +76,24 @@ The app targets `http://10.0.2.2:8080/` (host machine from the emulator) by
 default; override with `-Pmrr.baseUrl=...`. See
 [docs/android-client.md](docs/android-client.md).
 
+## Building the MRR Patcher
+
+The **MRR Patcher** is a separate Android app (module `android/patcher/`)
+that checks the server for updates, downloads declared patch files into its
+own private workspace, verifies them with SHA-256 and applies them there:
+
+```bash
+cd android
+./gradlew :patcher:assembleDebug
+# → android/patcher/build/outputs/apk/debug/patcher-debug.apk (~9.9 MB)
+```
+
+Server URL override: `-Pmrr.patcher.baseUrl=...`. The server serves the
+manifest at `GET /api/v1/patch/manifest` and patch files at
+`GET /api/v1/patch/files/{path}` (directory `server/java/patch-files`,
+configurable via `mrr.patch-dir`). Full details:
+[docs/patcher.md](docs/patcher.md).
+
 ## Configuration
 
 Configuration lives in `server/python/mrr/config.py` with development
@@ -154,14 +172,15 @@ pytest
 
 Tests use temporary databases and never touch your local `data/mrr.db`.
 
-Java server (45 tests):
+Java server (69 tests):
 
 ```bash
 cd server/java
 ./gradlew test
 ```
 
-Android app (41 unit tests):
+Android (41 app unit tests + 68 MRR Patcher unit tests, each run for both
+build variants):
 
 ```bash
 cd android
@@ -191,6 +210,11 @@ contract with ownership-scoped players — differences are listed in
 
 \* Players belonging to an account require the owner's token; unowned
 synthetic test players stay public for local development.
+
+The Java server additionally serves the public MRR Patcher endpoints
+`GET /api/v1/patch/manifest` and `GET /api/v1/patch/files/{path}`
+(see [docs/api.md](docs/api.md)); the Python reference implementation does
+not.
 
 Example health response:
 

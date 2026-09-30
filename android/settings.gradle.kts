@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "MrrRelived"
 include(":app")
+include(":patcher")

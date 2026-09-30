@@ -12,6 +12,22 @@ java {
     }
 }
 
+// Build information (META-INF/build-info.properties) so PatchService can
+// report the server version in GET /api/v1/patch/manifest. build.time is
+// omitted to keep processResources cacheable; processResources explicitly
+// waits for bootBuildInfo so build-info.properties always exists.
+springBoot {
+    buildInfo {
+        properties {
+            time = null
+        }
+    }
+}
+
+tasks.named('processResources') {
+    dependsOn tasks.named('bootBuildInfo')
+}
+
 repositories {
     mavenCentral()
 }

@@ -61,11 +61,29 @@ Tests are never skipped or disabled — they run fully once the library exists.
 
 ### Prerequisites (OmniOS packages)
 
+All three packages exist in the official **r151054 core** repository
+(`https://pkg.omnios.org/r151054/core/`, verified against the signed IPS
+catalog — note the *exact* names; `pkg search` misses them if the local
+catalog is stale):
+
 ```bash
-pkg install developer/git developer/build/gnu-make developer/gcc-14 runtime/perl-5xx
-# JDK 21 (OpenJDK/Zulu build for illumos), JAVA_HOME pointing at it:
-export JAVA_HOME=/usr/jdk/jdk-21
+sudo pkg refresh
+sudo pkg install developer/gcc14 developer/build/gnu-make web/curl
+ # perl ships with the base system.
+# JDK 21 — JAVA_HOME is optional, the script derives it from javac when unset:
+export JAVA_HOME=/usr/jdk/jdk-21   # only needed if javac is not on PATH
 ```
+
+- `developer/gcc14` → `gcc` in `/opt/gcc-14/bin` (the script finds it
+  automatically; `/opt/gcc-10` and a PATH `gcc` are tried as fallbacks)
+- `developer/build/gnu-make` → GNU make (`gmake`; `/usr/gnu/bin/make` and a
+  GNU `make` on PATH are tried as fallbacks)
+- `web/curl` → downloads (or pre-seed `.build/dl/`, see **Offline** below)
+
+If you prefer one meta package instead: `sudo pkg install
+developer/illumos-tools` (the package documented on illumos.org for building
+illumos) pulls in gcc 10/14, git and the build tools in one go. If `pkg`
+reports an unknown package, run `sudo pkg refresh` first.
 
 ### Build
 
@@ -77,11 +95,26 @@ JAVA_HOME=$JAVA_HOME ./build-sqlitejdbc.sh
 The script builds `libsqlitejdbc.so` and installs it to
 `server/java/native/sunos/x86_64/` (git-ignored, never committed).
 
+### Offline (no internet on the OmniOS box)
+
+Every download is cache-first: if the pinned file already exists in
+`server/java/tools/omnios/.build/dl/` with the correct SHA-256, no network
+access is used. Copy these three files from another machine into
+`.build/dl/`:
+
+| File in `.build/dl/` | SHA-256 |
+|---|---|
+| `sqlite-jdbc-3.53.4.0.zip` | `5b6977528a2ca93293dc2dae9b0b1e29d66276ff6c4c6b993146f52b8905bcb7` |
+| `sqlite-amalgamation-3530400.zip` | `1e71ddf93849c6a6ecf58b827c0692073d2dd7ee40196158068f7b29f422e87d` |
+| `slf4j-api-1.7.36.jar` | `d3ef575e3e4979678dc01bf1dcce51021493b4d11fb7f1be8ad982877c16a1c0` |
+
+(`pkg install` still needs the repositories reachable once, for gcc/make/curl.)
+
 ### What it builds — every input pinned
 
 | Input | Pin | Source |
 |---|---|---|
-| JNI + build system | `xerial/sqlite-jdbc` tag **3.53.4.0**, commit **`cab7981c19ce04d691f0675f0b2586afc2bbf803`** (verified after clone) | github.com/xerial/sqlite-jdbc |
+| JNI + build system | `xerial/sqlite-jdbc` tag **3.53.4.0** (tag maps to commit `cab7981c19ce04d691f0675f0b2586afc2bbf803`), GitHub tag zip `sqlite-jdbc-3.53.4.0.zip`, SHA-256 `5b6977528a2ca93293dc2dae9b0b1e29d66276ff6c4c6b993146f52b8905bcb7` | github.com/xerial/sqlite-jdbc (zip archive — **no git, no GNU tar required**) |
 | SQLite engine | official amalgamation **`sqlite-amalgamation-3530400.zip`** (SQLite 3.53.4, matches the driver version), SHA-256 `1e71ddf93849c6a6ecf58b827c0692073d2dd7ee40196158068f7b29f422e87d` | `https://www.sqlite.org/2026/` |
 | javac classpath for `javac -h` (JNI header) | `slf4j-api-1.7.36.jar`, SHA-256 `d3ef575e3e4979678dc01bf1dcce51021493b4d11fb7f1be8ad982877c16a1c0` | `repo1.maven.org` (Maven Central) |
 
@@ -112,6 +145,21 @@ Notes on the platform:
 - The build uses the upstream SQLite compile flags (JDBC extensions,
   `SQLITE_ENABLE_UPDATE_DELETE_LIMIT`, `SQLITE_THREADSAFE=1`, …), so behavior
   matches the official jar for other platforms.
+- Upstream's make graph, if left alone, would additionally download the
+  SQLite *source* tree, run `./configure --update-limit` and a nested `make`.
+  The script short-circuits that chain with timestamp-checked placeholders —
+  none of those files is read, because all compile inputs come from the
+  verified amalgamation passed as `SQLITE_SOURCE`.
+- **GCC 14**: implicit function declarations are a hard error by default in
+  GCC 14. Upstream 3.53.4 patches `rc = RegisterExtensionFunctions(db)` into
+  `sqlite3.c` (their `opendb_out:` perl recipe) while the definition lives in
+  `src/main/ext/extension-functions.c`, which that recipe appends to the *end*
+  of `sqlite3.c` — i.e. after the call site. Every gcc ≤ 13 build of stock
+  3.53.4 warned here; the symbol resolves in the same translation unit and
+  the call is ABI-safe (`int RegisterExtensionFunctions(sqlite3 *)`). The
+  script therefore compiles with `-Wno-implicit-function-declaration`
+  (passed via `CC`), restoring the pre-GCC-14 behavior without touching
+  upstream sources, the SQLite version, or the JNI approach.
 
 ### Verify
 
@@ -145,11 +193,11 @@ affected by this.
 ## Updating the driver later
 
 When bumping `org.xerial:sqlite-jdbc` in `build.gradle`, update the pins in
-`tools/omnios/build-sqlitejdbc.sh` **together**: tag + commit, amalgamation
-URL + SHA-256 (encoding rule: SQLite `3.X.Y` → `3XXYY00`), slf4j URL +
-SHA-256. The driver's Java code and the native library must come from the same
-version — mismatched JNI signatures cause `UnsatisfiedLinkError` on method
-lookup.
+`tools/omnios/build-sqlitejdbc.sh` **together**: tag + tag-zip URL +
+SHA-256, amalgamation URL + SHA-256 (encoding rule: SQLite `3.X.Y` →
+`3XXYY00`), slf4j URL + SHA-256. The driver's Java code and the native
+library must come from the same version — mismatched JNI signatures cause
+`UnsatisfiedLinkError` on method lookup.
 
 ## Explicit non-goals
 

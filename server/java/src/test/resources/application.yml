@@ -14,5 +14,6 @@ spring:
 
 mrr:
   data-dir: ./build/test-data
+  patch-dir: ./build/test-patch-files
   session-ttl-seconds: 86400
   password-iterations: 10000

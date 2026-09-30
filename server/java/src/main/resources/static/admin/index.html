@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRR Server Control Panel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #08080d;
+            --bg-secondary: #0e0e16;
+            --bg-card: #12121c;
+            --bg-hover: #1a1a28;
+            --bg-active: #1e1e30;
+            --border: rgba(255, 255, 255, 0.04);
+            --border-light: rgba(255, 255, 255, 0.08);
+            --text-primary: #e8e8f0;
+            --text-secondary: #7878a0;
+            --text-muted: #4a4a6a;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --cyan: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --radius: 6px;
+            --radius-lg: 10px;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.5);
+            --transition: 0.15s ease;
+        }
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .sidebar {
+            width: 220px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            transition: transform 0.25s ease;
+        }
+        .sidebar-header {
+            padding: 20px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sidebar-logo {
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+        .sidebar-subtitle {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+        }
+        .sidebar-nav {
+            flex: 1;
+            padding: 8px;
+            overflow-y: auto;
+        }
+        .nav-section {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 12px 12px 4px;
+            font-weight: 600;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: var(--radius);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            margin-bottom: 1px;
+        }
+        .nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+        .nav-item.active {
+            background: var(--accent-glow);
+            color: var(--accent);
+        }
+        .nav-item .icon {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .sidebar-footer {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .server-status-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 6px var(--success);
+        }
+        .status-dot.offline { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+        .status-dot.warning { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+        .server-status-text {
+            flex: 1;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .server-version {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+        .main-content {
+            flex: 1;
+            margin-left: 220px;
+            padding: 24px;
+            min-height: 100vh;
+        }
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .page-title {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .top-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .btn {
+            padding: 7px 14px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-light);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover {
+            background: var(--bg-hover);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        .btn.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+        .btn.primary:hover {
+            background: var(--accent-hover);
+        }
+        .btn.danger {
+            border-color: rgba(239, 68, 68, 0.25);
+            color: #fca5a5;
+        }
+        .btn.danger:hover {
+            background: rgba(239, 68, 68, 0.08);
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            transition: border-color var(--transition);
+        }
+        .card:hover {
+            border-color: var(--border-light);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .card-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+        .stat-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+        .progress-fill.cpu { background: linear-gradient(90deg, var(--accent), #8b5cf6); }
+        .progress-fill.ram { background: linear-gradient(90deg, var(--cyan), #06b6d4); }
+        .chart-container {
+            height: 100px;
+            margin-top: 12px;
+            position: relative;
+        }
+        .chart-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        .player-list {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .player-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background var(--transition);
+            border-radius: var(--radius);
+            margin: 2px -12px;
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+        .player-item:hover {
+            background: var(--bg-hover);
+        }
+        .player-item:last-child { border-bottom: none; }
+        .player-info { flex: 1; min-width: 0; }
+        .player-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .player-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge.success { background: rgba(16, 185, 129, 0.12); color: var(--success); }
+        .badge.warning { background: rgba(245, 158, 11, 0.12); color: var(--warning); }
+        .badge.danger { background: rgba(239, 68, 68, 0.12); color: var(--danger); }
+        .badge.info { background: rgba(59, 130, 246, 0.12); color: var(--info); }
+        .console-output {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            max-height: 380px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .console-output .cmd-echo {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .console-output .cmd-error {
+            color: var(--danger);
+        }
+        .console-output .cmd-success {
+            color: var(--success);
+        }
+        .console-input-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .console-input {
+            flex: 1;
+            padding: 9px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+        }
+        .console-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+        .quick-commands {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .quick-cmd {
+            padding: 4px 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+        }
+        .quick-cmd:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--border-light);
+        }
+        .backup-list {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .backup-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .backup-item:last-child { border-bottom: none; }
+        .backup-info { flex: 1; min-width: 0; }
+        .backup-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .backup-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-hover) 50%, var(--bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius);
+        }
+        .skeleton-text {
+            height: 12px;
+            margin-bottom: 8px;
+        }
+        .skeleton-title {
+            height: 16px;
+            width: 60%;
+            margin-bottom: 12px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .empty-state {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--text-muted);
+        }
+        .empty-state-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
+        .empty-state-text {
+            font-size: 13px;
+        }
+        .error-state {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--danger);
+        }
+        .error-state-text {
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: var(--shadow-lg);
+            min-width: 280px;
+            max-width: 400px;
+        }
+        .toast.success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--success); }
+        .toast.error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger); }
+        .toast.warning { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--warning); }
+        .toast.info { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: var(--info); }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateX(100%); }
+        }
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: var(--radius);
+        }
+        .hamburger:hover {
+            background: var(--bg-hover);
+        }
+        .page-section {
+            display: none;
+        }
+        .page-section.active {
+            display: block;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            max-width: 480px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: var(--radius);
+        }
+        .modal-close:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .detail-value {
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .health-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+        .health-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .health-icon.healthy { background: var(--success); box-shadow: 0 0 4px var(--success); }
+        .health-icon.warning { background: var(--warning); box-shadow: 0 0 4px var(--warning); }
+        .health-icon.error { background: var(--danger); box-shadow: 0 0 4px var(--danger); }
+        .health-icon.unknown { background: var(--text-muted); }
+        .health-label {
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .health-status {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .search-input {
+            width: 100%;
+            padding: 9px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+        .activity-feed {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .activity-icon.success { background: rgba(16, 185, 129, 0.12); }
+        .activity-icon.error { background: rgba(239, 68, 68, 0.12); }
+        .activity-icon.info { background: rgba(59, 130, 246, 0.12); }
+        .activity-icon.warning { background: rgba(245, 158, 11, 0.12); }
+        .activity-content { flex: 1; }
+        .activity-text {
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+        .activity-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        @media (max-width: 1024px) {
+            .grid-3 { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .hamburger {
+                display: block;
+            }
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .nav-section {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 12px 12px 4px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle navigation">☰</button>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">MRR</div>
+            <div class="sidebar-subtitle">Minion Rush Relived</div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Main</div>
+            <a class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+                <span class="icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+            <a class="nav-item" data-page="players" onclick="showPage('players')">
+                <span class="icon">👥</span>
+                <span>Players</span>
+            </a>
+            <a class="nav-item" data-page="console" onclick="showPage('console')">
+                <span class="icon">💻</span>
+                <span>Console</span>
+            </a>
+            <div class="nav-section">System</div>
+            <a class="nav-item" data-page="backups" onclick="showPage('backups')">
+                <span class="icon">💾</span>
+                <span>Backups</span>
+            </a>
+            <a class="nav-item" data-page="statistics" onclick="showPage('statistics')">
+                <span class="icon">📈</span>
+                <span>Statistics</span>
+            </a>
+            <a class="nav-item" data-page="settings" onclick="showPage('settings')">
+                <span class="icon">⚙️</span>
+                <span>Settings</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="server-status-box">
+                <div class="status-dot" id="sidebarStatus"></div>
+                <div style="flex: 1;">
+                    <div class="server-status-text" id="sidebarStatusText">Online</div>
+                    <div class="server-version" id="sidebarVersion">v0.3.0</div>
+                </div>
+                <button class="btn" onclick="logout()" style="padding: 4px 8px; font-size: 11px;">Logout</button>
+            </div>
+        </div>
+    </aside>
+    <main class="main-content">
+        <div class="top-bar">
+            <h1 class="page-title" id="pageTitle">Dashboard</h1>
+            <div class="top-actions">
+                <button class="btn" onclick="refreshCurrentPage()">↻ Refresh</button>
+            </div>
+        </div>
+        <div id="page-dashboard" class="page-section active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Server Status</div>
+                    <div class="stat-value" id="serverStatus">--</div>
+                    <div class="stat-sub" id="serverVersion">Version: --</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Players Online</div>
+                    <div class="stat-value" id="playersOnline">0</div>
+                    <div class="stat-sub">active now</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">CPU Usage</div>
+                    <div class="stat-value" id="cpuValue">--%</div>
+                    <div class="progress-bar"><div class="progress-fill cpu" id="cpuBar" style="width: 0%"></div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">JVM Memory</div>
+                    <div class="stat-value" id="ramValue">-- / --</div>
+                    <div class="progress-bar"><div class="progress-fill ram" id="ramBar" style="width: 0%"></div></div>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">CPU History</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas class="chart-canvas" id="cpuChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Memory History</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas class="chart-canvas" id="ramChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Server Health</span>
+                    </div>
+                    <div class="health-grid" id="healthGrid">
+                        <div class="health-item">
+                            <div class="health-icon healthy"></div>
+                            <div>
+                                <div class="health-label">Server</div>
+                                <div class="health-status">Healthy</div>
+                            </div>
+                        </div>
+                        <div class="health-item">
+                            <div class="health-icon healthy"></div>
+                            <div>
+                                <div class="health-label">Database</div>
+                                <div class="health-status">Connected</div>
+                            </div>
+                        </div>
+                        <div class="health-item">
+                            <div class="health-icon healthy"></div>
+                            <div>
+                                <div class="health-label">API</div>
+                                <div class="health-status">Operational</div>
+                            </div>
+                        </div>
+                        <div class="health-item">
+                            <div class="health-icon healthy"></div>
+                            <div>
+                                <div class="health-label">Backups</div>
+                                <div class="health-status">Enabled</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">System Information</span>
+                    </div>
+                    <div id="systemInfo">
+                        <div class="skeleton skeleton-title"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card" style="margin-top: 12px;">
+                <div class="card-header">
+                    <span class="card-title">Recent Activity</span>
+                </div>
+                <div class="activity-feed" id="activityFeed">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">No recent activity</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="page-players" class="page-section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Online Players</div>
+                    <div class="stat-value" id="playersOnlineCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Players</div>
+                    <div class="stat-value" id="totalPlayers">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">New Today</div>
+                    <div class="stat-value" id="newToday">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">New This Week</div>
+                    <div class="stat-value" id="newThisWeek">0</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Players</span>
+                </div>
+                <input type="text" class="search-input" id="playerSearch" placeholder="Search players..." oninput="filterPlayers()">
+                <div class="player-list" id="activePlayersList">
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                </div>
+            </div>
+        </div>
+        <div id="page-console" class="page-section">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Server Console</span>
+                    <span class="badge success">Connected</span>
+                </div>
+                <div class="console-output" id="consoleOutput">
+                    <div>MRR Server Console v0.3</div>
+                    <div>Type /help for available commands.</div>
+                    <div>---</div>
+                </div>
+                <div class="console-input-group">
+                    <input type="text" class="console-input" id="consoleInput" placeholder="/help" autocomplete="off">
+                    <button class="btn primary" onclick="executeCommand()">Execute</button>
+                </div>
+                <div class="quick-commands">
+                    <span class="quick-cmd" onclick="insertCommand('/help')">/help</span>
+                    <span class="quick-cmd" onclick="insertCommand('/status')">/status</span>
+                    <span class="quick-cmd" onclick="insertCommand('/players')">/players</span>
+                    <span class="quick-cmd" onclick="insertCommand('/uptime')">/uptime</span>
+                    <span class="quick-cmd" onclick="insertCommand('/version')">/version</span>
+                    <span class="quick-cmd" onclick="insertCommand('/backup database')">/backup database</span>
+                    <span class="quick-cmd" onclick="insertCommand('/backup full')">/backup full</span>
+                </div>
+            </div>
+        </div>
+        <div id="page-backups" class="page-section">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Database Backup</span>
+                        <span class="badge success" id="dbBackupStatus">Healthy</span>
+                    </div>
+                    <div class="stat-sub">Last backup: <span id="lastDbBackup">--</span></div>
+                    <div class="stat-sub">Next backup: <span id="nextDbBackup">--</span></div>
+                    <div style="margin-top: 12px;">
+                        <button class="btn primary" onclick="triggerBackup('database')">Database Backup</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Full Backup</span>
+                        <span class="badge success" id="fullBackupStatus">Healthy</span>
+                    </div>
+                    <div class="stat-sub">Last backup: <span id="lastFullBackup">--</span></div>
+                    <div style="margin-top: 12px;">
+                        <button class="btn primary" onclick="triggerBackup('full')">Full Backup</button>
+                        <button class="btn" onclick="verifyBackups()" style="margin-left: 8px;">Verify Backups</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card" style="margin-top: 12px;">
+                <div class="card-header">
+                    <span class="card-title">Recent Backups</span>
+                </div>
+                <div class="backup-list" id="backupList">
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                </div>
+            </div>
+        </div>
+        <div id="page-statistics" class="page-section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Players</div>
+                    <div class="stat-value" id="statTotalPlayers">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Now</div>
+                    <div class="stat-value" id="statActivePlayers">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">New Today</div>
+                    <div class="stat-value" id="statNewToday">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">New This Week</div>
+                    <div class="stat-value" id="statNewThisWeek">0</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Player Statistics</span>
+                </div>
+                <div id="playerStatsDetail">
+                    <div class="skeleton skeleton-title"></div>
+                    <div class="skeleton skeleton-text"></div>
+                    <div class="skeleton skeleton-text"></div>
+                </div>
+            </div>
+        </div>
+        <div id="page-settings" class="page-section">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Server</span>
+                    </div>
+                    <div id="settingsServer">
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Backups</span>
+                    </div>
+                    <div id="settingsBackups">
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <div class="modal-overlay" id="playerModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Player Details</span>
+                <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body" id="playerModalBody">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text"></div>
+            </div>
+        </div>
+    </div>
+    <div class="toast-container" id="toastContainer"></div>
+    <script>
+        let currentPage = 'dashboard';
+        let refreshInterval;
+        let commandHistory = [];
+        let historyIndex = -1;
+        let cpuHistory = [];
+        let ramHistory = [];
+        const MAX_HISTORY = 60;
+        let isLoading = {};
+
+        function escapeHtml(text) {
+            if (text == null) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        async function fetchJSON(url, options) {
+            const res = await fetch(url, options);
+            if (res.status === 401) {
+                window.location.href = '/admin/login';
+                throw new Error('Unauthorized');
+            }
+            return res.json();
+        }
+
+        function showPage(page) {
+            currentPage = page;
+            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+            const titles = { dashboard: 'Dashboard', players: 'Players', console: 'Console', backups: 'Backups', statistics: 'Statistics', settings: 'Settings' };
+            document.getElementById('pageTitle').textContent = titles[page] || page;
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+            refreshCurrentPage();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        async function loadStatus() {
+            try {
+                const status = await fetchJSON('/api/v1/admin/status');
+                document.getElementById('serverStatus').textContent = status.status.toUpperCase();
+                document.getElementById('serverVersion').textContent = 'Version: ' + status.version;
+                document.getElementById('sidebarVersion').textContent = 'v' + status.version;
+                const indicator = document.getElementById('sidebarStatus');
+                indicator.className = 'status-dot ' + (status.status === 'online' ? '' : 'offline');
+                document.getElementById('sidebarStatusText').textContent = status.status === 'online' ? 'Online' : 'Offline';
+            } catch (e) {
+                document.getElementById('serverStatus').textContent = 'ERROR';
+                document.getElementById('sidebarStatus').className = 'status-dot offline';
+                document.getElementById('sidebarStatusText').textContent = 'Offline';
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const stats = await fetchJSON('/api/v1/admin/stats');
+                document.getElementById('cpuValue').textContent = stats.cpuUsagePercent.toFixed(1) + '%';
+                document.getElementById('cpuBar').style.width = Math.min(stats.cpuUsagePercent, 100) + '%';
+                document.getElementById('ramValue').textContent = stats.ramUsedFormatted + ' / ' + stats.ramTotalFormatted;
+                const ramPct = stats.ramTotalBytes > 0 ? (stats.ramUsedBytes / stats.ramTotalBytes * 100) : 0;
+                document.getElementById('ramBar').style.width = ramPct + '%';
+                cpuHistory.push(stats.cpuUsagePercent);
+                ramHistory.push(ramPct);
+                if (cpuHistory.length > MAX_HISTORY) cpuHistory.shift();
+                if (ramHistory.length > MAX_HISTORY) ramHistory.shift();
+                drawChart('cpuChart', cpuHistory, '#6366f1');
+                drawChart('ramChart', ramHistory, '#06b6d4');
+            } catch (e) { console.error('Stats load failed:', e); }
+        }
+
+        function drawChart(canvasId, data, color) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = canvas.offsetHeight;
+            ctx.clearRect(0, 0, width, height);
+            if (data.length < 2) return;
+            const max = Math.max(...data, 10);
+            const step = width / (MAX_HISTORY - 1);
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            data.forEach((val, i) => {
+                const x = i * step;
+                const y = height - (val / max) * height;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            ctx.lineTo((data.length - 1) * step, height);
+            ctx.lineTo(0, height);
+            ctx.closePath();
+            ctx.fillStyle = color + '15';
+            ctx.fill();
+        }
+
+        async function loadSpecs() {
+            try {
+                const specs = await fetchJSON('/api/v1/admin/specs');
+                document.getElementById('systemInfo').innerHTML = `
+                    <div class="detail-row"><span class="detail-label">Java Version</span><span class="detail-value">${escapeHtml(specs.javaVersion)}</span></div>
+                    <div class="detail-row"><span class="detail-label">Java Vendor</span><span class="detail-value">${escapeHtml(specs.javaVendor)}</span></div>
+                    <div class="detail-row"><span class="detail-label">Operating System</span><span class="detail-value">${escapeHtml(specs.osName)}</span></div>
+                    <div class="detail-row"><span class="detail-label">OS Version</span><span class="detail-value">${escapeHtml(specs.osVersion)}</span></div>
+                    <div class="detail-row"><span class="detail-label">Architecture</span><span class="detail-value">${escapeHtml(specs.osArch)}</span></div>
+                `;
+            } catch (e) {
+                document.getElementById('systemInfo').innerHTML = '<div class="error-state"><div class="error-state-text">Unable to load system information</div><button class="btn" onclick="loadSpecs()">Retry</button></div>';
+            }
+        }
+
+        async function loadActivePlayers() {
+            const list = document.getElementById('activePlayersList');
+            try {
+                const data = await fetchJSON('/api/v1/admin/players/active');
+                document.getElementById('playersOnline').textContent = data.count;
+                document.getElementById('playersOnlineCount').textContent = data.count;
+                document.getElementById('statActivePlayers').textContent = data.count;
+                if (data.players.length === 0) {
+                    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-text">No players online</div><div class="empty-state-text" style="font-size: 11px; margin-top: 4px;">Players will appear here when they connect.</div></div>';
+                    return;
+                }
+                list.innerHTML = data.players.map(p => `
+                    <div class="player-item" onclick="showPlayerDetail(${p.playerId})">
+                        <div class="player-info">
+                            <div class="player-name">${escapeHtml(p.displayName)}</div>
+                            <div class="player-meta">#${escapeHtml(p.playerIdString)} | ${escapeHtml(p.lastActivity)}</div>
+                        </div>
+                        <div class="badge success">Online</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = '<div class="error-state"><div class="error-state-text">Unable to load players</div><button class="btn" onclick="loadActivePlayers()">Retry</button></div>';
+            }
+        }
+
+        async function loadNewestPlayers() {
+            try {
+                const players = await fetchJSON('/api/v1/admin/players/newest?limit=10');
+                const list = document.getElementById('newestPlayersList');
+                if (players.length === 0) {
+                    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-text">No players yet</div></div>';
+                    return;
+                }
+                list.innerHTML = players.map(p => `
+                    <div class="player-item" onclick="showPlayerDetail(${p.id})">
+                        <div class="player-info">
+                            <div class="player-name">${escapeHtml(p.displayName)}</div>
+                            <div class="player-meta">#${escapeHtml(p.playerId)} | ${escapeHtml(p.registeredAt)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('newestPlayersList').innerHTML = '<div class="error-state"><div class="error-state-text">Unable to load players</div><button class="btn" onclick="loadNewestPlayers()">Retry</button></div>';
+            }
+        }
+
+        async function loadPlayerStats() {
+            try {
+                const stats = await fetchJSON('/api/v1/admin/players/stats');
+                document.getElementById('totalPlayers').textContent = stats.totalPlayers;
+                document.getElementById('newToday').textContent = stats.newPlayersToday;
+                document.getElementById('newThisWeek').textContent = stats.newPlayersThisWeek;
+                document.getElementById('statTotalPlayers').textContent = stats.totalPlayers;
+                document.getElementById('statNewToday').textContent = stats.newPlayersToday;
+                document.getElementById('statNewThisWeek').textContent = stats.newPlayersThisWeek;
+                document.getElementById('playerStatsDetail').innerHTML = `
+                    <div class="detail-row"><span class="detail-label">Total Players</span><span class="detail-value">${stats.totalPlayers}</span></div>
+                    <div class="detail-row"><span class="detail-label">Active Now</span><span class="detail-value">${stats.activePlayers}</span></div>
+                    <div class="detail-row"><span class="detail-label">New Today</span><span class="detail-value">${stats.newPlayersToday}</span></div>
+                    <div class="detail-row"><span class="detail-label">New This Week</span><span class="detail-value">${stats.newPlayersThisWeek}</span></div>
+                    <div class="detail-row"><span class="detail-label">Latest Registration</span><span class="detail-value">${escapeHtml(stats.latestRegistration)}</span></div>
+                `;
+            } catch (e) {
+                document.getElementById('playerStatsDetail').innerHTML = '<div class="error-state"><div class="error-state-text">Unable to load statistics</div><button class="btn" onclick="loadPlayerStats()">Retry</button></div>';
+            }
+        }
+
+        async function loadBackups() {
+            try {
+                const status = await fetchJSON('/api/v1/admin/backups/status');
+                document.getElementById('lastDbBackup').textContent = status.lastBackup;
+                document.getElementById('nextDbBackup').textContent = status.nextBackup;
+                document.getElementById('lastFullBackup').textContent = status.lastBackup;
+                const list = document.getElementById('backupList');
+                if (status.backups.length === 0) {
+                    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💾</div><div class="empty-state-text">No backups yet</div><div class="empty-state-text" style="font-size: 11px; margin-top: 4px;">Create your first backup using the buttons above.</div></div>';
+                    return;
+                }
+                list.innerHTML = status.backups.slice(0, 10).map(b => `
+                    <div class="backup-item">
+                        <div class="backup-info">
+                            <div class="backup-name">${escapeHtml(b.fileName)}</div>
+                            <div class="backup-meta">${escapeHtml(b.createdAt)} | ${escapeHtml(b.sizeFormatted)} | SHA-256: ${escapeHtml(b.sha256.substring(0, 16))}...</div>
+                        </div>
+                        <span class="badge ${b.status === 'verified' ? 'success' : b.status === 'failed' ? 'danger' : 'warning'}">${escapeHtml(b.status)}</span>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('backupList').innerHTML = '<div class="error-state"><div class="error-state-text">Unable to load backups</div><button class="btn" onclick="loadBackups()">Retry</button></div>';
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const specs = await fetchJSON('/api/v1/admin/specs');
+                const status = await fetchJSON('/api/v1/admin/status');
+                document.getElementById('settingsServer').innerHTML = `
+                    <div class="detail-row"><span class="detail-label">Version</span><span class="detail-value">${escapeHtml(specs.serverVersion)}</span></div>
+                    <div class="detail-row"><span class="detail-label">OS</span><span class="detail-value">${escapeHtml(specs.osName)} ${escapeHtml(specs.osVersion)}</span></div>
+                    <div class="detail-row"><span class="detail-label">Architecture</span><span class="detail-value">${escapeHtml(specs.osArch)}</span></div>
+                    <div class="detail-row"><span class="detail-label">Java</span><span class="detail-value">${escapeHtml(specs.javaVersion)}</span></div>
+                    <div class="detail-row"><span class="detail-label">Uptime</span><span class="detail-value">${escapeHtml(status.uptimeFormatted)}</span></div>
+                `;
+                const backupStatus = await fetchJSON('/api/v1/admin/backups/status');
+                document.getElementById('settingsBackups').innerHTML = `
+                    <div class="detail-row"><span class="detail-label">Enabled</span><span class="detail-value">${backupStatus.enabled ? 'Yes' : 'No'}</span></div>
+                    <div class="detail-row"><span class="detail-label">Retention</span><span class="detail-value">${backupStatus.retentionDays} days</span></div>
+                    <div class="detail-row"><span class="detail-label">Last Backup</span><span class="detail-value">${escapeHtml(backupStatus.lastBackup)}</span></div>
+                    <div class="detail-row"><span class="detail-label">Next Backup</span><span class="detail-value">${escapeHtml(backupStatus.nextBackup)}</span></div>
+                `;
+            } catch (e) {
+                document.getElementById('settingsServer').innerHTML = '<div class="error-state">Unable to load settings</div>';
+            }
+        }
+
+        async function triggerBackup(type) {
+            showLoading(true);
+            try {
+                const res = await fetchJSON('/api/v1/admin/backups/' + type, { method: 'POST' });
+                showToast(res.message, res.success ? 'success' : 'error');
+                if (res.success) loadBackups();
+            } catch (e) {
+                showToast('Backup failed', 'error');
+            }
+            showLoading(false);
+        }
+
+        async function verifyBackups() {
+            showLoading(true);
+            try {
+                const res = await fetchJSON('/api/v1/admin/backups/verify', { method: 'POST' });
+                showToast(res.message, res.success ? 'success' : 'error');
+                if (res.success) loadBackups();
+            } catch (e) {
+                showToast('Verification failed', 'error');
+            }
+            showLoading(false);
+        }
+
+        function insertCommand(cmd) {
+            document.getElementById('consoleInput').value = cmd;
+            document.getElementById('consoleInput').focus();
+        }
+
+        async function executeCommand() {
+            const input = document.getElementById('consoleInput');
+            const output = document.getElementById('consoleOutput');
+            const command = input.value.trim();
+            if (!command) return;
+
+            commandHistory.push(command);
+            historyIndex = commandHistory.length;
+
+            try {
+                const res = await fetchJSON('/api/v1/admin/commands', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command })
+                });
+
+                const timestamp = new Date().toLocaleTimeString();
+                const className = res.success ? 'cmd-success' : 'cmd-error';
+                output.innerHTML += `<div><span class="cmd-echo">[${timestamp}] > ${escapeHtml(command)}</span></div>`;
+                output.innerHTML += `<div class="${className}">${escapeHtml(res.output)}</div>`;
+                output.innerHTML += '<div>---</div>';
+                output.scrollTop = output.scrollHeight;
+            } catch (e) {
+                output.innerHTML += `<div class="cmd-error">Error: ${escapeHtml(e.message)}</div>`;
+            }
+
+            input.value = '';
+        }
+
+        function showPlayerDetail(playerId) {
+            const modal = document.getElementById('playerModal');
+            const body = document.getElementById('playerModalBody');
+            body.innerHTML = '<div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text"></div>';
+            modal.classList.add('show');
+            fetchJSON('/api/v1/admin/players/active').then(data => {
+                const player = data.players.find(p => p.playerId === playerId);
+                if (player) {
+                    body.innerHTML = `
+                        <div class="detail-row"><span class="detail-label">Display Name</span><span class="detail-value">${escapeHtml(player.displayName)}</span></div>
+                        <div class="detail-row"><span class="detail-label">Player ID</span><span class="detail-value">#${escapeHtml(player.playerIdString)}</span></div>
+                        <div class="detail-row"><span class="detail-label">Username</span><span class="detail-value">${escapeHtml(player.username)}</span></div>
+                        <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="badge success">Online</span></span></div>
+                        <div class="detail-row"><span class="detail-label">Last Activity</span><span class="detail-value">${escapeHtml(player.lastActivity)}</span></div>
+                        <div class="detail-row"><span class="detail-label">Session Started</span><span class="detail-value">${escapeHtml(player.sessionStarted)}</span></div>
+                    `;
+                } else {
+                    body.innerHTML = '<div class="empty-state">Player not found or offline</div>';
+                }
+            }).catch(() => {
+                body.innerHTML = '<div class="error-state">Unable to load player details</div>';
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('playerModal').classList.remove('show');
+        }
+
+        function filterPlayers() {
+            const query = document.getElementById('playerSearch').value.toLowerCase();
+            const items = document.querySelectorAll('#activePlayersList .player-item');
+            items.forEach(item => {
+                const name = item.querySelector('.player-name').textContent.toLowerCase();
+                const meta = item.querySelector('.player-meta').textContent.toLowerCase();
+                item.style.display = (name.includes(query) || meta.includes(query)) ? '' : 'none';
+            });
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/v1/admin/logout', { method: 'POST' });
+            } catch (e) {}
+            window.location.href = '/admin/login';
+        }
+
+        function showLoading(show) {
+            let overlay = document.getElementById('loadingOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'loadingOverlay';
+                overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);';
+                overlay.innerHTML = '<div style="width:32px;height:32px;border:2px solid rgba(255,255,255,0.1);border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;"></div>';
+                document.body.appendChild(overlay);
+            }
+            overlay.style.display = show ? 'flex' : 'none';
+        }
+
+        function showToast(message, type) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function refreshCurrentPage() {
+            switch (currentPage) {
+                case 'dashboard':
+                    loadStatus();
+                    loadStats();
+                    loadSpecs();
+                    break;
+                case 'players':
+                    loadActivePlayers();
+                    loadNewestPlayers();
+                    loadPlayerStats();
+                    break;
+                case 'backups':
+                    loadBackups();
+                    break;
+                case 'statistics':
+                    loadPlayerStats();
+                    break;
+                case 'settings':
+                    loadSettings();
+                    break;
+            }
+        }
+
+        document.getElementById('consoleInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                executeCommand();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    document.getElementById('consoleInput').value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    document.getElementById('consoleInput').value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    document.getElementById('consoleInput').value = '';
+                }
+            } else if (e.key === 'l' && e.ctrlKey) {
+                e.preventDefault();
+                document.getElementById('consoleOutput').innerHTML = '';
+            }
+        });
+
+        document.getElementById('playerModal').addEventListener('click', (e) => {
+            if (e.target.id === 'playerModal') closeModal();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearInterval(refreshInterval);
+            } else {
+                refreshInterval = setInterval(refreshCurrentPage, 3000);
+                refreshCurrentPage();
+            }
+        });
+
+        refreshCurrentPage();
+        refreshInterval = setInterval(refreshCurrentPage, 3000);
+    </script>
+</body>
+</html>

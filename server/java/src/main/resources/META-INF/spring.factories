@@ -1,2 +1,2 @@
-org.springframework.boot.EnvironmentPostProcessor=\
-de.freeway.mrr.config.DataDirectoryEnvironmentPostProcessor
+org.springframework.boot.env.EnvironmentPostProcessor=\
+  de.freeway.mrr.config.SqliteJdbcLibEnvironmentPostProcessor

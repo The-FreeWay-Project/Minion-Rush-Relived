@@ -19,5 +19,14 @@ spring:
 
 mrr:
   data-dir: ./data
+  patch-dir: ./patch-files
   session-ttl-seconds: 86400
   password-iterations: 600000
+  
+  # Backup-Konfiguration
+  backup:
+    enabled: true
+    target: ./backups
+    db-backup-interval-minutes: 15
+    full-backup-interval-minutes: 30
+    retention-days: 30

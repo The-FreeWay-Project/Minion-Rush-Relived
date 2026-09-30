@@ -317,6 +317,64 @@ Lists synthetic test players ordered by internal id.
 
 ---
 
+### `GET /api/v1/patch/manifest`
+
+Update manifest for the MRR Patcher (A1.0.0+). Public — no `Authorization`
+header required. Full details in [patcher.md](patcher.md).
+
+| Item | Value |
+|---|---|
+| Method | `GET` |
+| Auth | none (public) |
+| Success status | `200 OK` |
+
+**Query parameters**
+
+| Name | Required | Description |
+|---|---|---|
+| `installed` | no | Patcher version on the device (e.g. `A1.0.0`); only influences `message` |
+
+**Response**
+
+```json
+{
+  "version": "A1.0.0",
+  "channel": "stable",
+  "platform": "android",
+  "serverVersion": "0.3.0",
+  "message": "MRR Patcher is up to date.",
+  "files": []
+}
+```
+
+`message` reflects the installed-vs-latest comparison server-side
+(`MRR Patcher is up to date.` / `Update to A1.0.0 available.` /
+`Installed patcher version is ahead of the stable channel.`);
+`files` currently stays empty — when populated, each entry has the shape
+`{ "path": "...", "url": "...", "size": 1234, "sha256": "..." }` and the
+client verifies `sha256` before anything is applied.
+
+---
+
+### `GET /api/v1/patch/files/{path}`
+
+Streams one file from the server's patch directory for the MRR Patcher.
+Public — no `Authorization` header required. `{path}` is a catch-all path
+variable, so nested paths work (`/api/v1/patch/files/packs/demo/core.bin`).
+
+| Item | Value |
+|---|---|
+| Method | `GET` |
+| Auth | none (public) |
+| Success status | `200 OK` (`application/octet-stream`, with `Content-Length`) |
+| Error status | `404 Not Found` for unsafe paths (`.`, `..`, backslash, absolute), unknown files and directories |
+
+The readable root is the `mrr.patch-dir` configuration property (default
+`./patch-files`); paths are normalized and prefix-checked against it, so
+nothing outside that directory is ever served.
+
+---
+
 Unknown paths return `404 Not Found`. Expected validation, duplicate,
 not-found and authentication cases never return `500`.
 
